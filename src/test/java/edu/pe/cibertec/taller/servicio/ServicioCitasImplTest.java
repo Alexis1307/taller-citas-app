@@ -1,6 +1,7 @@
 package edu.pe.cibertec.taller.servicio;
 
 import edu.pe.cibertec.taller.excepcion.EspecialidadIncorrectaException;
+import edu.pe.cibertec.taller.excepcion.HorarioNoPermitidoException;
 import edu.pe.cibertec.taller.excepcion.MecanicoNoEncontradoException;
 import edu.pe.cibertec.taller.modelo.Cita;
 import edu.pe.cibertec.taller.modelo.EstadoCita;
@@ -120,59 +121,81 @@ class ServicioCitasImplTest {
 	}
 
 	@Test
-	@DisplayName("Un servicio pesado a las 15:00 se rechaza con HorarioNoPermitidoException")
-	void agendarServicioPesadoEnLaTarde() {
-		// Arrange
-		// TODO
+	@DisplayName("Un servicio pesado a las 07:00 se rechaza con HorarioNoPermitidoException")
+	void agendarServicioPesadoALas07() {
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 7, 0);
 
-		// Act y Assert
-		// TODO
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.REPARACION_MOTOR);
+
+		when(repositorioMecanicos.findById(ID_MECANICO)).thenReturn(Optional.of(mecanico));
+
+		assertThrows(HorarioNoPermitidoException.class, () -> {
+			servicioCitas.agendarCita(ID_MECANICO, PLACA, TipoServicio.REPARACION_MOTOR, fechaCita);
+		});
+
+		verify(repositorioCitas, never()).save(any());
 	}
 
 	@Test
-	@DisplayName("Un servicio pesado a las 09:00 se acepta y se guarda")
-	void agendarServicioPesadoEnLaManana() {
-		// Arrange
-		// TODO
+	@DisplayName("Un servicio pesado a las 08:00 se acepta y se guarda")
+	void agendarServicioPesadoALas08() {
 
-		// Act
-		// TODO
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 8, 0);
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.REPARACION_MOTOR);
 
-		// Assert
-		// TODO
+		when(repositorioMecanicos.findById(ID_MECANICO)).thenReturn(Optional.of(mecanico));
+
+		when(repositorioCitas.save(any(Cita.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		Cita resultado = servicioCitas.agendarCita(ID_MECANICO, PLACA, TipoServicio.REPARACION_MOTOR, fechaCita);
+
+		assertEquals(EstadoCita.PROGRAMADA, resultado.getEstado());
+		verify(repositorioCitas, times(1)).save(any(Cita.class));
 	}
 
 	@Test
-	@DisplayName("Agendar en una fecha del pasado lanza FechaInvalidaException")
-	void agendarConFechaEnElPasado() {
-		// Arrange
-		// TODO: recuerden mockear proveedorFechaHora.ahora()
+	@DisplayName("Un servicio pesado a las 11:00 se acepta y se guarda")
+	void agendarServicioPesadoALas11() {
 
-		// Act y Assert
-		// TODO
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 11, 0);
+
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.REPARACION_MOTOR);
+
+		when(repositorioMecanicos.findById(ID_MECANICO)).thenReturn(Optional.of(mecanico));
+
+		when(repositorioCitas.save(any(Cita.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		Cita resultado = servicioCitas.agendarCita(ID_MECANICO, PLACA, TipoServicio.REPARACION_MOTOR, fechaCita);
+
+		assertEquals(EstadoCita.PROGRAMADA, resultado.getEstado());
+		verify(repositorioCitas, times(1)).save(any(Cita.class));
 	}
 
 	@Test
-	@DisplayName("Agendar sobre una cita ya programada se rechaza con HorarioOcupadoException")
-	void agendarConSuperposicion() {
-		// Arrange
-		// TODO
+	@DisplayName("Un servicio pesado a las 12:00 se rechaza con HorarioNoPermitidoException")
+	void agendarServicioPesadoALas12() {
 
-		// Act y Assert
-		// TODO
-	}
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 12, 0);
 
-	@Test
-	@DisplayName("Una cita que empieza justo cuando termina otra se acepta")
-	void agendarCitaContigua() {
-		// Arrange
-		// TODO: una cita existente que termina a las 10:00 y la nueva que empieza a las 10:00
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.REPARACION_MOTOR);
 
-		// Act
-		// TODO
+		when(repositorioMecanicos.findById(ID_MECANICO)).thenReturn(Optional.of(mecanico));
 
-		// Assert
-		// TODO
+		assertThrows(HorarioNoPermitidoException.class, () -> {
+			servicioCitas.agendarCita(ID_MECANICO, PLACA, TipoServicio.REPARACION_MOTOR, fechaCita);
+		});
+
+		verify(repositorioCitas, never()).save(any());
 	}
 
 	@Test
