@@ -1,12 +1,10 @@
 package edu.pe.cibertec.taller.servicio;
 
+import edu.pe.cibertec.taller.excepcion.CitaNoCancelableException;
 import edu.pe.cibertec.taller.excepcion.EspecialidadIncorrectaException;
 import edu.pe.cibertec.taller.excepcion.HorarioNoPermitidoException;
 import edu.pe.cibertec.taller.excepcion.MecanicoNoEncontradoException;
-import edu.pe.cibertec.taller.modelo.Cita;
-import edu.pe.cibertec.taller.modelo.EstadoCita;
-import edu.pe.cibertec.taller.modelo.Mecanico;
-import edu.pe.cibertec.taller.modelo.TipoServicio;
+import edu.pe.cibertec.taller.modelo.*;
 import edu.pe.cibertec.taller.repositorio.RepositorioCitas;
 import edu.pe.cibertec.taller.repositorio.RepositorioMecanicos;
 import edu.pe.cibertec.taller.servicio.impl.ServicioCitasImpl;
@@ -199,49 +197,82 @@ class ServicioCitasImplTest {
 	}
 
 	@Test
-	@DisplayName("Cancelar con 24 horas o mas de anticipacion no genera penalidad")
+	@DisplayName("Se cancela cuando faltan exactamente 24 horas: penalidad 0.0, estado CANCELADA y se notifica")
 	void cancelarConAnticipacionSuficiente() {
-		// Arrange
-		// TODO
 
-		// Act
-		// TODO
+		Long idCita = 100L;
 
-		// Assert
-		// TODO: penalidad 0, estado CANCELADA, notificacion
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 10, 0);
+
+		LocalDateTime ahora24h =
+				LocalDateTime.of(2026, 9, 17, 10, 0);
+
+		when(proveedorFechaHora.ahora()).thenReturn(ahora24h);
+
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.CAMBIO_ACEITE);
+
+		Cita cita =
+				new Cita(idCita, mecanico, PLACA, TipoServicio.CAMBIO_ACEITE, fechaCita, 1, EstadoCita.PROGRAMADA);
+
+		when(repositorioCitas.findById(idCita)).thenReturn(Optional.of(cita));
+
+		ResultadoCancelacion resultado = servicioCitas.cancelarCita(idCita);
+
+		assertEquals(0.0, resultado.getMontoPenalidad());
+		assertEquals(EstadoCita.CANCELADA, cita.getEstado());
+		verify(repositorioCitas, times(1)).save(cita);
+		verify(servicioNotificaciones, times(1)).notificarCitaCancelada(cita);
 	}
 
 	@Test
-	@DisplayName("Cancelar con menos de 24 horas aplica una penalidad de 50.00")
+	@DisplayName("Se cancela cuando faltan 2 horas: aplica penalidad de 50.0")
 	void cancelarConAvisoTardio() {
-		// Arrange
-		// TODO
+		Long idCita = 101L;
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 10, 0);
 
-		// Act
-		// TODO
+		LocalDateTime ahora2h =
+				LocalDateTime.of(2026, 9, 18, 8, 0);
 
-		// Assert
-		// TODO
+		when(proveedorFechaHora.ahora()).thenReturn(ahora2h);
+
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.CAMBIO_ACEITE);
+
+		Cita cita =
+				new Cita(idCita, mecanico, PLACA, TipoServicio.CAMBIO_ACEITE, fechaCita, 1, EstadoCita.PROGRAMADA);
+
+		when(repositorioCitas.findById(idCita)).thenReturn(Optional.of(cita));
+
+		ResultadoCancelacion resultado = servicioCitas.cancelarCita(idCita);
+
+		assertEquals(50.0, resultado.getMontoPenalidad());
 	}
 
 	@Test
-	@DisplayName("Cancelar una cita inexistente lanza CitaNoEncontradaException")
-	void cancelarCitaInexistente() {
-		// Arrange
-		// TODO
+	@DisplayName("Intentar cancelar una cita atendida lanza CitaNoCancelableException")
+	void cancelarCitaYaAtendida() {
 
-		// Act y Assert
-		// TODO
-	}
+		Long idCita = 102L;
 
-	@Test
-	@DisplayName("Cancelar una cita que ya fue cancelada lanza CitaNoCancelableException")
-	void cancelarCitaYaCancelada() {
-		// Arrange
-		// TODO
+		LocalDateTime fechaCita =
+				LocalDateTime.of(2026, 9, 18, 10, 0);
 
-		// Act y Assert
-		// TODO
+		Mecanico mecanico =
+				new Mecanico(ID_MECANICO, NOMBRE_MECANICO, TipoServicio.CAMBIO_ACEITE);
+
+		Cita cita =
+				new Cita(idCita, mecanico, PLACA, TipoServicio.CAMBIO_ACEITE, fechaCita, 1, EstadoCita.ATENDIDA);
+
+		when(repositorioCitas.findById(idCita)).thenReturn(Optional.of(cita));
+
+		assertThrows(CitaNoCancelableException.class, () -> {
+			servicioCitas.cancelarCita(idCita);
+		});
+
+		verify(servicioNotificaciones, never()).notificarCitaCancelada(any());
 	}
 
 	@Test
